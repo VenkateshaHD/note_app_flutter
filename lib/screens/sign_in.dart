@@ -54,7 +54,6 @@ class _SignInScreenState extends State<SignInScreen> {
 
       if (response.statusCode == 200 &&
           responseBody["status"].toString() != '0') {
-      print("token :" +responseBody['token']);
         await storage.write(key: 'token', value: responseBody['token']);
         await storage.write(
           key: 'user_id',

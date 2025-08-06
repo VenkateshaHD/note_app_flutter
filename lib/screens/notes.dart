@@ -37,6 +37,8 @@ class _NotesCloudDashboardState extends State<NotesCloudDashboard> {
   List<Note> _notes = [];
   List<Note> _filteredNotes = [];
 
+  String userName = '';
+
   bool loading = false;
 
   @override
@@ -63,6 +65,8 @@ class _NotesCloudDashboardState extends State<NotesCloudDashboard> {
     final storage = const FlutterSecureStorage();
 
     String token = await storage.read(key: 'token') ?? '';
+
+    userName = await storage.read(key:'name') ?? '';
 
     String url = '$serverAPI/notes/';
 
@@ -209,13 +213,13 @@ class _NotesCloudDashboardState extends State<NotesCloudDashboard> {
               ),
               const PopupMenuItem(value: 'logout', child: Text('Logout')),
             ],
-            child: const Padding(
+            child:  Padding(
               padding: EdgeInsets.symmetric(horizontal: 16),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
-                    'Hi, Venkatesha',
+                    'Hi, $userName',
                     style: TextStyle(color: Color(0xFF6B7280), fontSize: 14),
                   ),
                   Icon(Icons.more_vert, color: Color(0xFF6B7280), size: 16),
