@@ -1,5 +1,12 @@
+import 'dart:convert';
+
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'dart:io';
+
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:http/http.dart' as http;
+import 'package:note_app/common.dart';
 
 class CreateNoteScreen extends StatefulWidget {
   const CreateNoteScreen({Key? key}) : super(key: key);
@@ -19,20 +26,6 @@ class _CreateNoteScreenState extends State<CreateNoteScreen> {
   @override
   void initState() {
     super.initState();
-    // Pre-fill with sample data as shown in the design
-    _titleController.text = 'PHP For loop';
-    _contentController.text = '''<!DOCTYPE html>
-<html>
-<body>
-
-<?php
-for (\$x = 0; \$x <= 10; \$x++) {
-  echo "The number is: \$x <br>";
-}
-?>
-
-</body>
-</html>''';
   }
 
   @override
@@ -43,14 +36,18 @@ for (\$x = 0; \$x <= 10; \$x++) {
   }
 
   Future<void> _pickFile() async {
+    final result = await FilePicker.platform.pickFiles();
+    if (result != null && result.files.single.path != null) {
+      setState(() => _selectedFile = File(result.files.single.path!));
+    }
     // Simulate file picker - in real app use file_picker package
     setState(() {
-      _fileName = 'sample_document.pdf';
+      _fileName = _selectedFile!.path.split('/').last;
     });
-    
+
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('File selected: sample_document.pdf'),
+      SnackBar(
+        content: Text('File selected: $_fileName'),
         duration: Duration(seconds: 2),
       ),
     );
@@ -64,13 +61,38 @@ for (\$x = 0; \$x <= 10; \$x++) {
   }
 
   Future<void> _saveNote() async {
+    final storage = const FlutterSecureStorage();
+
+    String token = await storage.read(key: "token") ?? "";
+
     if (_formKey.currentState!.validate()) {
       setState(() {
         _isLoading = true;
       });
 
-      // Simulate API call
-      await Future.delayed(const Duration(seconds: 2));
+
+      Map<String, String> data = {
+        "title": _titleController.text,
+        "content": _contentController.text,
+        "isPublic": "true", // or "false"
+      };
+
+      String url = '$serverAPI/notes/add';
+
+      var request = http.MultipartRequest('Post', Uri.parse(url));
+
+      request.fields.addAll(data);
+      request.headers['Authorization'] = 'Bearer $token';
+
+      if (_selectedFile != null) {
+        request.files.add(
+          await http.MultipartFile.fromPath('files', _selectedFile!.path),
+        );
+      }
+      var streamedResponse = await request.send();
+      var response = await http.Response.fromStream(streamedResponse);
+
+      print(response.body);
 
       setState(() {
         _isLoading = false;
@@ -90,27 +112,30 @@ for (\$x = 0; \$x <= 10; \$x++) {
 
   void _cancel() {
     // Show confirmation dialog if there's unsaved content
-    if (_titleController.text.isNotEmpty || _contentController.text.isNotEmpty) {
+    if (_titleController.text.isNotEmpty ||
+        _contentController.text.isNotEmpty) {
       showDialog(
         context: context,
         builder: (context) => AlertDialog(
           backgroundColor: Colors.white,
           title: const Text('Discard changes?'),
-          content: const Text('You have unsaved changes. Are you sure you want to discard them?'),
+          content: const Text(
+            'You have unsaved changes. Are you sure you want to discard them?',
+          ),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Keep editing',style: TextStyle(color: Color(0xFF1F2937)),),
+              child: const Text(
+                'Keep editing',
+                style: TextStyle(color: Color(0xFF1F2937)),
+              ),
             ),
             TextButton(
               onPressed: () {
                 Navigator.of(context).pop(); // Close dialog
                 Navigator.of(context).pop(); // Close create note screen
               },
-              child: const Text(
-                'Discard',
-                style: TextStyle(color: Colors.red),
-              ),
+              child: const Text('Discard', style: TextStyle(color: Colors.red)),
             ),
           ],
         ),
@@ -129,10 +154,7 @@ for (\$x = 0; \$x <= 10; \$x++) {
         elevation: 0,
         leading: IconButton(
           onPressed: _cancel,
-          icon: const Icon(
-            Icons.arrow_back,
-            color: Color(0xFF1A1A1A),
-          ),
+          icon: const Icon(Icons.arrow_back, color: Color(0xFF1A1A1A)),
         ),
         title: const Text(
           'Create New Note',
@@ -194,10 +216,7 @@ for (\$x = 0; \$x <= 10; \$x++) {
                           const SizedBox(height: 2),
                           const Text(
                             '*',
-                            style: TextStyle(
-                              fontSize: 14,
-                              color: Colors.red,
-                            ),
+                            style: TextStyle(fontSize: 14, color: Colors.red),
                           ),
                           const SizedBox(height: 8),
                           TextFormField(
@@ -330,7 +349,7 @@ for (\$x = 0; \$x <= 10; \$x++) {
                             ),
                           ),
                           const SizedBox(height: 8),
-                          
+
                           if (_fileName == null) ...[
                             // Upload button
                             GestureDetector(
@@ -370,7 +389,7 @@ for (\$x = 0; \$x <= 10; \$x++) {
                             ),
                             const SizedBox(height: 8),
                             const Text(
-                              'PDF and images only (single file)',
+                              'PDF only (single file)',
                               style: TextStyle(
                                 fontSize: 12,
                                 color: Color(0xFF6B7280),
@@ -478,7 +497,8 @@ for (\$x = 0; \$x <= 10; \$x++) {
                               child: CircularProgressIndicator(
                                 strokeWidth: 2,
                                 valueColor: AlwaysStoppedAnimation<Color>(
-                                    Colors.white),
+                                  Colors.white,
+                                ),
                               ),
                             )
                           : const Row(
@@ -511,9 +531,7 @@ for (\$x = 0; \$x <= 10; \$x++) {
 class NavigationHelper {
   static Future<bool?> createNewNote(BuildContext context) {
     return Navigator.of(context).push<bool>(
-      MaterialPageRoute(
-        builder: (context) => const CreateNoteScreen(),
-      ),
+      MaterialPageRoute(builder: (context) => const CreateNoteScreen()),
     );
   }
 }

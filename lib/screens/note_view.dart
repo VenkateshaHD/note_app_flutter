@@ -1,6 +1,14 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:http/http.dart' as http;
+import 'package:note_app/common.dart';
+import 'package:note_app/screens/notes.dart';
 import 'dart:io';
+
+import 'package:url_launcher/url_launcher.dart';
 
 // For URL launching - add to pubspec.yaml: url_launcher: ^6.1.12
 // import 'package:url_launcher/url_launcher.dart';
@@ -34,54 +42,70 @@ class _NoteViewScreenState extends State<NoteViewScreen> {
 
   String _formatDate(DateTime date) {
     const months = [
-      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
     ];
-    
+
     String hour = date.hour.toString().padLeft(2, '0');
     String minute = date.minute.toString().padLeft(2, '0');
-    
+
     return '${months[date.month - 1]} ${date.day}, ${date.year} at $hour:$minute ${date.hour >= 12 ? 'PM' : 'AM'}';
   }
 
   Future<void> _openAttachment() async {
     if (widget.attachmentUrl == null) return;
 
-    setState(() {
-      _isLoading = true;
-    });
+    // setState(() {
+    //   _isLoading = true;
+    // });
 
     try {
-      // Simulate opening URL in browser
-      // In a real app, use url_launcher package:
-      // final Uri url = Uri.parse(widget.attachmentUrl!);
-      // if (await canLaunchUrl(url)) {
-      //   await launchUrl(url, mode: LaunchMode.externalApplication);
-      // }
-      
+      final Uri url = Uri.parse("https://flutter.dev");
+      //  final Uri url = Uri.parse(note.attachmentName);
+      if (await canLaunchUrl(url)) {
+        await launchUrl(
+          url,
+          mode: LaunchMode.externalApplication,
+        ); // opens in browser
+      } else {
+        throw 'Could not launch $url';
+      }
+
       // For demo purposes, show a snackbar
       await Future.delayed(const Duration(milliseconds: 500));
-      
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Opening ${widget.attachmentType}: ${widget.attachmentUrl}'),
-            duration: const Duration(seconds: 3),
-            action: SnackBarAction(
-              label: 'Copy Link',
-              onPressed: () {
-                Clipboard.setData(ClipboardData(text: widget.attachmentUrl!));
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Link copied to clipboard'),
-                    duration: Duration(seconds: 2),
-                  ),
-                );
-              },
-            ),
-          ),
-        );
-      }
+
+      //   if (mounted) {
+      //     ScaffoldMessenger.of(context).showSnackBar(
+      //       SnackBar(
+      //         content: Text(
+      //           'Opening ${widget.attachmentType}: ${widget.attachmentUrl}',
+      //         ),
+      //         duration: const Duration(seconds: 3),
+      //         action: SnackBarAction(
+      //           label: 'Copy Link',
+      //           onPressed: () {
+      //             Clipboard.setData(ClipboardData(text: widget.attachmentUrl!));
+      //             ScaffoldMessenger.of(context).showSnackBar(
+      //               const SnackBar(
+      //                 content: Text('Link copied to clipboard'),
+      //                 duration: Duration(seconds: 2),
+      //               ),
+      //             );
+      //           },
+      //         ),
+      //       ),
+      //     );
+      //   }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -112,9 +136,9 @@ class _NoteViewScreenState extends State<NoteViewScreen> {
 
   void _editNote() {
     // Navigate to edit screen
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Edit note functionality')),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('Edit note functionality')));
   }
 
   void _deleteNote() {
@@ -122,7 +146,9 @@ class _NoteViewScreenState extends State<NoteViewScreen> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Delete Note'),
-        content: const Text('Are you sure you want to delete this note? This action cannot be undone.'),
+        content: const Text(
+          'Are you sure you want to delete this note? This action cannot be undone.',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
@@ -130,23 +156,52 @@ class _NoteViewScreenState extends State<NoteViewScreen> {
           ),
           TextButton(
             onPressed: () {
-              Navigator.of(context).pop(); // Close dialog
-              Navigator.of(context).pop(true); // Return to dashboard with delete result
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Note deleted'),
-                  backgroundColor: Colors.red,
-                ),
-              );
+              deleteNotes();
             },
-            child: const Text(
-              'Delete',
-              style: TextStyle(color: Colors.red),
-            ),
+            child: const Text('Delete', style: TextStyle(color: Colors.red)),
           ),
         ],
       ),
     );
+  }
+
+  void deleteNotes() async {
+    final storage = const FlutterSecureStorage();
+
+    String userId = await storage.read(key: 'user_id') ?? '';
+    String token = await storage.read(key: 'token') ?? '';
+
+    String url = '$serverAPI/notes/delete/${widget.noteId}';
+
+    var response = await http.get(
+      Uri.parse(url),
+      headers: {"Authorization": 'Bearer $token'},
+    );
+
+    var responseBody = json.decode(response.body);
+    print(responseBody);
+
+    if (response.statusCode == 200 &&
+        responseBody["status"].toString() != '0') {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Note deleted successfully'),
+          duration: Duration(seconds: 2),
+        ),
+      );
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(builder: (_) => const NotesCloudDashboard()),
+        (route) => false,
+      );
+    } else  {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Something went wrong'),
+          duration: Duration(seconds: 2),
+        ),
+      );
+    }
   }
 
   @override
@@ -158,10 +213,7 @@ class _NoteViewScreenState extends State<NoteViewScreen> {
         elevation: 0,
         leading: IconButton(
           onPressed: () => Navigator.of(context).pop(),
-          icon: const Icon(
-            Icons.arrow_back,
-            color: Color(0xFF1A1A1A),
-          ),
+          icon: const Icon(Icons.arrow_back, color: Color(0xFF1A1A1A)),
         ),
         title: const Text(
           'Back to Dashboard',
@@ -221,10 +273,7 @@ class _NoteViewScreenState extends State<NoteViewScreen> {
             ],
             child: const Padding(
               padding: EdgeInsets.all(16),
-              child: Icon(
-                Icons.more_vert,
-                color: Color(0xFF6B7280),
-              ),
+              child: Icon(Icons.more_vert, color: Color(0xFF6B7280)),
             ),
           ),
         ],
@@ -249,11 +298,7 @@ class _NoteViewScreenState extends State<NoteViewScreen> {
             // Date information
             Row(
               children: [
-                const Icon(
-                  Icons.schedule,
-                  size: 16,
-                  color: Color(0xFF6B7280),
-                ),
+                const Icon(Icons.schedule, size: 16, color: Color(0xFF6B7280)),
                 const SizedBox(width: 6),
                 Text(
                   'Created: ${_formatDate(widget.createdDate)}',
@@ -267,11 +312,7 @@ class _NoteViewScreenState extends State<NoteViewScreen> {
             const SizedBox(height: 8),
             Row(
               children: [
-                const Icon(
-                  Icons.update,
-                  size: 16,
-                  color: Color(0xFF6B7280),
-                ),
+                const Icon(Icons.update, size: 16, color: Color(0xFF6B7280)),
                 const SizedBox(width: 6),
                 Text(
                   'Updated: ${_formatDate(widget.updatedDate)}',
@@ -312,13 +353,13 @@ class _NoteViewScreenState extends State<NoteViewScreen> {
                       height: 1.5,
                     ),
                   ),
-                  
+
                   // CloudFront Link Widget
                   if (widget.attachmentUrl != null) ...[
                     const SizedBox(height: 24),
                     const Divider(color: Color(0xFFE5E7EB)),
                     const SizedBox(height: 16),
-                    
+
                     // Attachment section header
                     const Text(
                       'Attachment',
@@ -329,7 +370,7 @@ class _NoteViewScreenState extends State<NoteViewScreen> {
                       ),
                     ),
                     const SizedBox(height: 12),
-                    
+
                     // CloudFront link widget
                     GestureDetector(
                       onTap: _isLoading ? null : _openAttachment,
@@ -361,14 +402,18 @@ class _NoteViewScreenState extends State<NoteViewScreen> {
                               ),
                             ),
                             const SizedBox(width: 12),
-                            
+
                             // File info
                             Expanded(
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
-                                    widget.attachmentUrl!.split('/').last.length > 30
+                                    widget.attachmentUrl!
+                                                .split('/')
+                                                .last
+                                                .length >
+                                            30
                                         ? '${widget.attachmentUrl!.split('/').last.substring(0, 30)}...'
                                         : widget.attachmentUrl!.split('/').last,
                                     style: const TextStyle(
@@ -390,7 +435,7 @@ class _NoteViewScreenState extends State<NoteViewScreen> {
                                 ],
                               ),
                             ),
-                            
+
                             // Loading indicator or open icon
                             if (_isLoading)
                               const SizedBox(
@@ -413,7 +458,7 @@ class _NoteViewScreenState extends State<NoteViewScreen> {
                         ),
                       ),
                     ),
-                    
+
                     // File type badge
                     const SizedBox(height: 8),
                     Row(

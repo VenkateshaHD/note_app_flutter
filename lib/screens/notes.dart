@@ -37,6 +37,8 @@ class _NotesCloudDashboardState extends State<NotesCloudDashboard> {
   List<Note> _notes = [];
   List<Note> _filteredNotes = [];
 
+  bool loading = false;
+
   @override
   void initState() {
     super.initState();
@@ -52,6 +54,12 @@ class _NotesCloudDashboardState extends State<NotesCloudDashboard> {
   }
 
   Future<void> _loadNotes() async {
+    setState(() {
+      loading = true;
+    });
+    await Future.delayed(Duration(seconds: 2));
+    _filteredNotes = [];
+    _notes = [];
     final storage = const FlutterSecureStorage();
 
     String token = await storage.read(key: 'token') ?? '';
@@ -66,9 +74,8 @@ class _NotesCloudDashboardState extends State<NotesCloudDashboard> {
       },
     );
 
-    var responseBody = json.decode(response.body);
-
     if (response.statusCode == 200) {
+      var responseBody = json.decode(response.body);
       responseBody.forEach((note) {
         _notes.add(
           Note(
@@ -84,11 +91,12 @@ class _NotesCloudDashboardState extends State<NotesCloudDashboard> {
     } else {
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text(responseBody['message'])));
-
+      ).showSnackBar(SnackBar(content: Text("Something went wrong")));
+      loading = false;
       return;
     }
     _filteredNotes = _notes;
+    loading = false;
     setState(() {});
   }
 
@@ -121,19 +129,17 @@ class _NotesCloudDashboardState extends State<NotesCloudDashboard> {
   }
 
   void _openAttachment(Note note) async {
-    //  final Uri url = Uri.parse("https://flutter.dev");
-     final Uri url = Uri.parse(note.attachmentName);
+    final Uri url = Uri.parse("https://flutter.dev");
+    //  final Uri url = Uri.parse(note.attachmentName);
     if (await canLaunchUrl(url)) {
-      await launchUrl(url, mode: LaunchMode.externalApplication); // opens in browser
+      await launchUrl(
+        url,
+        mode: LaunchMode.externalApplication,
+      ); // opens in browser
     } else {
       throw 'Could not launch $url';
     }
-    // ScaffoldMessenger.of(context).clearSnackBars();
-    // ScaffoldMessenger.of(context).showSnackBar(
-    //   SnackBar(
-    //     content: Text('Opening ${note.attachmentType}: ${note.attachmentName}'),
-    //   ),
-    // );
+   
   }
 
   String _formatDate(DateTime date) {
@@ -219,151 +225,157 @@ class _NotesCloudDashboardState extends State<NotesCloudDashboard> {
           ),
         ],
       ),
-      body: Column(
-        children: [
-          // Header section
-          Container(
-            color: Colors.white,
-            padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          'My Notes',
-                          style: TextStyle(
-                            fontSize: 32,
-                            fontWeight: FontWeight.w700,
-                            color: Color(0xFF1A1A1A),
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          '${_filteredNotes.length} notes total',
-                          style: const TextStyle(
-                            fontSize: 14,
-                            color: Color(0xFF6B7280),
-                            fontWeight: FontWeight.w400,
-                          ),
-                        ),
-                      ],
-                    ),
-                    ElevatedButton.icon(
-                      onPressed: _createNewNote,
-                      icon: const Icon(Icons.add, size: 18),
-                      label: const Text('New Note'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF1F2937),
-                        foregroundColor: Colors.white,
-                        elevation: 0,
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 12,
-                        ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 24),
-                // Search bar
-                TextField(
-                  controller: _searchController,
-                  decoration: InputDecoration(
-                    hintText: 'Search your notes...',
-                    hintStyle: const TextStyle(
-                      color: Color(0xFF9CA3AF),
-                      fontSize: 16,
-                    ),
-                    prefixIcon: const Icon(
-                      Icons.search,
-                      color: Color(0xFF9CA3AF),
-                      size: 20,
-                    ),
-                    filled: true,
-                    fillColor: const Color(0xFFF9FAFB),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
-                      borderSide: const BorderSide(
-                        color: Color(0xFFE5E7EB),
-                        width: 1,
-                      ),
-                    ),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
-                      borderSide: const BorderSide(
-                        color: Color(0xFFE5E7EB),
-                        width: 1,
-                      ),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
-                      borderSide: const BorderSide(
-                        color: Color(0xFF4A90E2),
-                        width: 2,
-                      ),
-                    ),
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 12,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          // Notes list
-          Expanded(
-            child: Container(
-              color: const Color(0xFFF8F9FA),
-              padding: const EdgeInsets.all(24),
-              child: _filteredNotes.isEmpty
-                  ? const Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
+      body: RefreshIndicator(
+        onRefresh: _loadNotes,
+        child: Column(
+          children: [
+            // Header section
+            Container(
+              color: Colors.white,
+              padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Icon(
-                            Icons.search_off,
-                            size: 64,
-                            color: Color(0xFF9CA3AF),
-                          ),
-                          SizedBox(height: 16),
-                          Text(
-                            'No notes found',
+                          const Text(
+                            'My Notes',
                             style: TextStyle(
-                              fontSize: 18,
+                              fontSize: 32,
+                              fontWeight: FontWeight.w700,
+                              color: Color(0xFF1A1A1A),
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            '${_filteredNotes.length} notes total',
+                            style: const TextStyle(
+                              fontSize: 14,
                               color: Color(0xFF6B7280),
-                              fontWeight: FontWeight.w500,
+                              fontWeight: FontWeight.w400,
                             ),
                           ),
                         ],
                       ),
-                    )
-                  : ListView.builder(
-                      itemCount: _filteredNotes.length,
-                      itemBuilder: (context, index) {
-                        final note = _filteredNotes[index];
-                        return Padding(
-                          padding: const EdgeInsets.only(bottom: 16),
-                          child: NoteCard(
-                            note: note,
-                            onTap: () => _openNote(note),
-                            onAttachmentTap: () => _openAttachment(note),
-                            formatDate: _formatDate,
+                      ElevatedButton.icon(
+                        onPressed: _createNewNote,
+                        icon: const Icon(Icons.add, size: 18),
+                        label: const Text('New Note'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF1F2937),
+                          foregroundColor: Colors.white,
+                          elevation: 0,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 12,
                           ),
-                        );
-                      },
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 24),
+                  // Search bar
+                  TextField(
+                    controller: _searchController,
+                    decoration: InputDecoration(
+                      hintText: 'Search your notes...',
+                      hintStyle: const TextStyle(
+                        color: Color(0xFF9CA3AF),
+                        fontSize: 16,
+                      ),
+                      prefixIcon: const Icon(
+                        Icons.search,
+                        color: Color(0xFF9CA3AF),
+                        size: 20,
+                      ),
+                      filled: true,
+                      fillColor: const Color(0xFFF9FAFB),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: const BorderSide(
+                          color: Color(0xFFE5E7EB),
+                          width: 1,
+                        ),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: const BorderSide(
+                          color: Color(0xFFE5E7EB),
+                          width: 1,
+                        ),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: const BorderSide(
+                          color: Color(0xFF4A90E2),
+                          width: 2,
+                        ),
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 12,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            // Notes list
+            Expanded(
+              child: loading
+                  ? const Center(child: CircularProgressIndicator())
+                  : Container(
+                      color: const Color(0xFFF8F9FA),
+                      padding: const EdgeInsets.all(24),
+                      child: _filteredNotes.isEmpty
+                          ? const Center(
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(
+                                    Icons.search_off,
+                                    size: 64,
+                                    color: Color(0xFF9CA3AF),
+                                  ),
+                                  SizedBox(height: 16),
+                                  Text(
+                                    'No notes found',
+                                    style: TextStyle(
+                                      fontSize: 18,
+                                      color: Color(0xFF6B7280),
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            )
+                          : ListView.builder(
+                              itemCount: _filteredNotes.length,
+                              itemBuilder: (context, index) {
+                                final note = _filteredNotes[index];
+                                return Padding(
+                                  padding: const EdgeInsets.only(bottom: 16),
+                                  child: NoteCard(
+                                    note: note,
+                                    onTap: () => _openNote(note),
+                                    onAttachmentTap: () =>
+                                        _openAttachment(note),
+                                    formatDate: _formatDate,
+                                  ),
+                                );
+                              },
+                            ),
                     ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

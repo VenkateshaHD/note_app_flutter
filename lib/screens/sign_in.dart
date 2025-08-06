@@ -46,10 +46,10 @@ class _SignInScreenState extends State<SignInScreen> {
       );
       // var response = await http.get(Uri.parse("http://10.0.2.2:8000"));
 
-      var responseBody = json.decode(response.body);
       setState(() {
         _isLoading = false;
       });
+      var responseBody = json.decode(response.body);
 
 
       if (response.statusCode == 200 &&
