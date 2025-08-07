@@ -71,7 +71,7 @@ class _UpdateNoteScreenState extends State<UpdateNoteScreen> {
     final hasTextChanges =
         _titleController.text != widget.initialTitle ||
         _contentController.text != widget.initialContent;
-    final hasFileChanges = _selectedFile != null || _removeExistingAttachment;
+    final hasFileChanges = (_selectedFile != null || _fileBytes != null) || _removeExistingAttachment;
 
     if (mounted) {
       setState(() {
@@ -105,6 +105,7 @@ class _UpdateNoteScreenState extends State<UpdateNoteScreen> {
         setState(() {
           _fileBytes = result.files.single.bytes;
           _fileName = result.files.single.name;
+          _hasChanges = true;
         });
       } else {
         // Mobile: Use path
@@ -300,7 +301,7 @@ class _UpdateNoteScreenState extends State<UpdateNoteScreen> {
                 ),
                 const SizedBox(height: 8),
               ],
-              if (_selectedFile != null) ...[
+              if (_selectedFile != null || _fileBytes != null) ...[
                 Text(
                   'New file: $_fileName',
                   style: TextStyle(color: Colors.green[600]),
@@ -726,7 +727,7 @@ class _UpdateNoteScreenState extends State<UpdateNoteScreen> {
                             ],
 
                             // New file selection
-                            if (_selectedFile == null) ...[
+                            if (_selectedFile == null && _fileBytes == null) ...[
                               GestureDetector(
                                 onTap: _pickFile,
                                 child: Container(

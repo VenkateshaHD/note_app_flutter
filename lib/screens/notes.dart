@@ -215,10 +215,10 @@ class _NotesCloudDashboardState extends State<NotesCloudDashboard> {
               }
             },
             itemBuilder: (context) => [
-              const PopupMenuItem(
+               PopupMenuItem(
                 onTap: null,
                 value: 'profile',
-                child: Text('Hi, Venkatesha'),
+                child: Text('Hi, $userName'),
               ),
               const PopupMenuItem(value: 'logout', child: Text('Logout')),
             ],
