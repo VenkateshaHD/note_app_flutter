@@ -66,7 +66,6 @@ class _NoteViewScreenState extends State<NoteViewScreen> {
     if (widget.attachmentUrl == null) return;
 
     try {
-      // final Uri url = Uri.parse("https://flutter.dev");
        final Uri url = Uri.parse(widget.attachmentUrl!);
       if (await canLaunchUrl(url)) {
         await launchUrl(
@@ -197,7 +196,7 @@ class _NoteViewScreenState extends State<NoteViewScreen> {
           duration: Duration(seconds: 2),
         ),
       );
-      Navigator.of(context).pushNamed("/sign_in");
+      Navigator.of(context).pop();
     }
   }
 
