@@ -65,17 +65,13 @@ class _NoteViewScreenState extends State<NoteViewScreen> {
   Future<void> _openAttachment() async {
     if (widget.attachmentUrl == null) return;
 
-    // setState(() {
-    //   _isLoading = true;
-    // });
-
     try {
-      final Uri url = Uri.parse("https://flutter.dev");
-      //  final Uri url = Uri.parse(note.attachmentName);
+      // final Uri url = Uri.parse("https://flutter.dev");
+       final Uri url = Uri.parse(widget.attachmentUrl!);
       if (await canLaunchUrl(url)) {
         await launchUrl(
           url,
-          mode: LaunchMode.externalApplication,
+          // mode: LaunchMode.externalApplication,
         ); // opens in browser
       } else {
         throw 'Could not launch $url';
@@ -201,6 +197,7 @@ class _NoteViewScreenState extends State<NoteViewScreen> {
           duration: Duration(seconds: 2),
         ),
       );
+      Navigator.of(context).pushNamed("/sign_in");
     }
   }
 

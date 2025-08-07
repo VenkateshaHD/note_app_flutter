@@ -78,6 +78,8 @@ class _NotesCloudDashboardState extends State<NotesCloudDashboard> {
       },
     );
 
+    print(response.body);
+
     if (response.statusCode == 200) {
       var responseBody = json.decode(response.body);
       responseBody.forEach((note) {
@@ -97,6 +99,7 @@ class _NotesCloudDashboardState extends State<NotesCloudDashboard> {
         context,
       ).showSnackBar(SnackBar(content: Text("Something went wrong")));
       loading = false;
+      Navigator.of(context).pushNamed("/sign_in");
       return;
     }
     _filteredNotes = _notes;
@@ -133,9 +136,12 @@ class _NotesCloudDashboardState extends State<NotesCloudDashboard> {
   }
 
   void _openAttachment(Note note) async {
-    final Uri url = Uri.parse("https://flutter.dev");
-    //  final Uri url = Uri.parse(note.attachmentName);
-    if (await canLaunchUrl(url)) {
+    // final Uri url = Uri.parse("https://flutter.dev");
+     final url = Uri.parse(note.attachmentName);
+     bool canUrl = await canLaunchUrl(url);
+     print("ggggggggggg "+note.attachmentName);
+     print("ggggggggggg "+canUrl.toString());
+    if (canUrl) {
       await launchUrl(
         url,
         mode: LaunchMode.externalApplication,

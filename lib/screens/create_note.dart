@@ -1,6 +1,9 @@
 import 'dart:convert';
+import 'dart:io' as io;
+import 'dart:typed_data';
 
 import 'package:file_picker/file_picker.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'dart:io';
 
@@ -20,6 +23,8 @@ class _CreateNoteScreenState extends State<CreateNoteScreen> {
   final _titleController = TextEditingController();
   final _contentController = TextEditingController();
   bool _isLoading = false;
+
+  Uint8List? _fileBytes;
   File? _selectedFile;
   String? _fileName;
 
@@ -36,21 +41,36 @@ class _CreateNoteScreenState extends State<CreateNoteScreen> {
   }
 
   Future<void> _pickFile() async {
-    final result = await FilePicker.platform.pickFiles();
-    if (result != null && result.files.single.path != null) {
-      setState(() => _selectedFile = File(result.files.single.path!));
-    }
-    // Simulate file picker - in real app use file_picker package
-    setState(() {
-      _fileName = _selectedFile!.path.split('/').last;
-    });
+    // final result = await FilePicker.platform.pickFiles();
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('File selected: $_fileName'),
-        duration: Duration(seconds: 2),
-      ),
+    // if (result != null && result.files.single.path != null) {
+    //   setState(() => _selectedFile = File(result.files.single.path!));
+    // }
+    // // Simulate file picker - in real app use file_picker package
+    // setState(() {
+    //   _fileName = _selectedFile!.path.split('/').last;
+    // });
+
+    final result = await FilePicker.platform.pickFiles(
+      withData: true, // Required for web
     );
+
+    if (result != null) {
+      if (kIsWeb) {
+        // Web: Use bytes
+        setState(() {
+          _fileBytes = result.files.single.bytes;
+          _fileName = result.files.single.name;
+        });
+      } else {
+        // Mobile: Use path
+        setState(() {
+          final path = result.files.single.path!;
+          _selectedFile = io.File(path);
+          _fileName = path.split('/').last;
+        });
+      }
+    }
   }
 
   void _removeFile() {
@@ -70,7 +90,6 @@ class _CreateNoteScreenState extends State<CreateNoteScreen> {
         _isLoading = true;
       });
 
-
       Map<String, String> data = {
         "title": _titleController.text,
         "content": _contentController.text,
@@ -84,11 +103,29 @@ class _CreateNoteScreenState extends State<CreateNoteScreen> {
       request.fields.addAll(data);
       request.headers['Authorization'] = 'Bearer $token';
 
-      if (_selectedFile != null) {
-        request.files.add(
-          await http.MultipartFile.fromPath('files', _selectedFile!.path),
-        );
+      // if (_selectedFile != null) {
+      //   request.files.add(
+      //     await http.MultipartFile.fromPath('files', _selectedFile!.path),
+      //   );
+      // }
+
+       // File field
+    if (kIsWeb) {
+      if (_fileBytes != null && _fileName != null) {
+        request.files.add(http.MultipartFile.fromBytes(
+          'files',
+          _fileBytes!,
+          filename: _fileName!,
+        ));
       }
+    } else {
+      if (_selectedFile != null) {
+        request.files.add(await http.MultipartFile.fromPath(
+          'files',
+          _selectedFile!.path,
+        ));
+      }
+    }
       var streamedResponse = await request.send();
       var response = await http.Response.fromStream(streamedResponse);
 
