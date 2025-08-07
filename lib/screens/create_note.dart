@@ -103,12 +103,6 @@ class _CreateNoteScreenState extends State<CreateNoteScreen> {
       request.fields.addAll(data);
       request.headers['Authorization'] = 'Bearer $token';
 
-      // if (_selectedFile != null) {
-      //   request.files.add(
-      //     await http.MultipartFile.fromPath('files', _selectedFile!.path),
-      //   );
-      // }
-
        // File field
     if (kIsWeb) {
       if (_fileBytes != null && _fileName != null) {

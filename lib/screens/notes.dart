@@ -12,6 +12,7 @@ class Note {
   final String title;
   final String content;
   final DateTime date;
+  final DateTime updatedDate;
   final String attachmentName;
   final String attachmentType;
 
@@ -20,6 +21,7 @@ class Note {
     required this.title,
     required this.content,
     required this.date,
+    required this.updatedDate,
     required this.attachmentName,
     required this.attachmentType,
   });
@@ -89,6 +91,7 @@ class _NotesCloudDashboardState extends State<NotesCloudDashboard> {
             title: note["title"],
             content: note["content"],
             date: DateTime.parse(note["created_at"]),
+            updatedDate: DateTime.parse(note["updated_at"]),
             attachmentName: note["file_url"] ?? '',
             attachmentType: "PDF",
           ),
@@ -129,7 +132,7 @@ class _NotesCloudDashboardState extends State<NotesCloudDashboard> {
       title: note.title,
       content: note.content,
       createdDate: note.date,
-      updatedDate: note.date,
+      updatedDate: note.updatedDate,
       attachmentUrl: note.attachmentName,
       attachmentType: note.attachmentType,
     );

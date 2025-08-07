@@ -6,6 +6,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
 import 'package:note_app/common.dart';
 import 'package:note_app/screens/notes.dart';
+import 'package:note_app/screens/update_note.dart';
 import 'dart:io';
 
 import 'package:url_launcher/url_launcher.dart';
@@ -15,14 +16,14 @@ import 'package:url_launcher/url_launcher.dart';
 
 class NoteViewScreen extends StatefulWidget {
   final String noteId;
-  final String title;
-  final String content;
+   String title;
+   String content;
   final DateTime createdDate;
   final DateTime updatedDate;
   final String? attachmentUrl;
   final String? attachmentType;
 
-  const NoteViewScreen({
+   NoteViewScreen({
     Key? key,
     required this.noteId,
     required this.title,
@@ -66,7 +67,7 @@ class _NoteViewScreenState extends State<NoteViewScreen> {
     if (widget.attachmentUrl == null) return;
 
     try {
-       final Uri url = Uri.parse(widget.attachmentUrl!);
+      final Uri url = Uri.parse(widget.attachmentUrl!);
       if (await canLaunchUrl(url)) {
         await launchUrl(
           url,
@@ -129,11 +130,24 @@ class _NoteViewScreenState extends State<NoteViewScreen> {
     );
   }
 
-  void _editNote() {
+  void _editNote() async {
     // Navigate to edit screen
-    ScaffoldMessenger.of(
+    final result = await UpdateNoteHelper.updateNote(
       context,
-    ).showSnackBar(const SnackBar(content: Text('Edit note functionality')));
+      noteId: widget.noteId,
+      initialTitle: widget.title,
+      initialContent: widget.content,
+      existingAttachmentUrl: widget.attachmentUrl,
+      existingAttachmentType: widget.attachmentType,
+    );
+  //   ScaffoldMessenger.of(
+  //     context,
+  //   ).showSnackBar(const SnackBar(content: Text('Edit note functionality')));
+  // }
+  widget.title = result!['title'];
+  widget.content = result['content'];
+  // widget.attachmentUrl = result['attachmentUrl'];
+  // widget.attachmentType = result['attachmentType'];
   }
 
   void _deleteNote() {
@@ -189,7 +203,7 @@ class _NoteViewScreenState extends State<NoteViewScreen> {
         MaterialPageRoute(builder: (_) => const NotesCloudDashboard()),
         (route) => false,
       );
-    } else  {
+    } else {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Something went wrong'),
@@ -236,16 +250,16 @@ class _NoteViewScreenState extends State<NoteViewScreen> {
               }
             },
             itemBuilder: (context) => [
-              // const PopupMenuItem(
-              //   value: 'edit',
-              //   child: Row(
-              //     children: [
-              //       Icon(Icons.edit, size: 18, color: Color(0xFF6B7280)),
-              //       SizedBox(width: 8),
-              //       Text('Edit Note'),
-              //     ],
-              //   ),
-              // ),
+              const PopupMenuItem(
+                value: 'edit',
+                child: Row(
+                  children: [
+                    Icon(Icons.edit, size: 18, color: Color(0xFF6B7280)),
+                    SizedBox(width: 8),
+                    Text('Edit Note'),
+                  ],
+                ),
+              ),
               const PopupMenuItem(
                 value: 'copy',
                 child: Row(
